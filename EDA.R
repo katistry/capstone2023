@@ -1,6 +1,6 @@
 setwd("/Users/meggie/Documents/23 Spring/482/capstone2023")
 wf = read.csv("cleanedWildfireData.csv")
-View(wf)
+# View(wf)
 
 library(dplyr)
 library(ggplot2)

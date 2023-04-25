@@ -7,21 +7,38 @@ library(leaps)
 # simple linear regression
 # removed X (identifier), state (already accounted for in longitude and latitude, numbers have no prediction value)
 # and fire_class_size because it is associated with dependent variables
-# full model
-linmod = lm(fire_size ~ . - X - state - fire_size_class 
+
+## Looking at model MSE
+
+ntrain = round(.6 * nrow(wf))
+ntest = nrow(wf) - ntrain
+
+set.seed(482)
+train_id = sort(sample(1:nrow(wf), ntrain)) 
+
+wf_train = wf[train_id, ]
+wf_test = wf[-train_id, ]
+
+# Full Model
+fulltrain_linmod = lm(fire_size ~ . - X - state - fire_size_class 
             - wstation_wban - wstation_byear - wstation_eyear 
             - discovery_month - disc_pre_year - disc_pre_month
-            - fire_mag - Vegetation, data = wf)
-summary(linmod)
+            - fire_mag - Vegetation, data = wf_train)
+fulltrain_summ = summary(fulltrain_linmod)
 
-# R squared: 0.2684
+# train mse
+mean(fulltrain_summ$residuals^2)
 
-# BIC of full model
-AIC(linmod,k=log(length(wf$fire_size)))
+# test mse
+full_preds = predict(fulltrain_linmod, newdata = wf_test)
+mean((wf_test$fire_size - full_preds)^2)
 
+fulltrain_summ$r.squared
+
+# make reduced model
 # predictors df
-X = wf[, c(4,5,10,16:32)]
-y = wf[, 2]
+X = wf_train[, c(4,5,10,16:32)]
+y = wf_train[, 2]
 
 leaps_ic = leaps.AIC(X, y)
 # see distribution of BIC values
@@ -35,13 +52,18 @@ var_mask = leaps_output$which[nvar_minBIC, ]
 model_vars = var_names[var_mask]
 model_vars
 
-# reduced model chosen by BIC
-red_linmod = lm(fire_size ~ latitude + longitude + dstation_m 
-                + Temp_pre_30 + Wind_pre_7 + Wind_cont + Hum_pre_7 
-                + Hum_cont + remoteness, data = wf)
-summary(red_linmod)
+# Reduced Model
+redtrain_linmod = lm(fire_size ~ latitude + longitude + dstation_m 
+                     + Temp_pre_30 + Wind_pre_7 + Wind_cont + Hum_pre_30 
+                     + Hum_cont + remoteness, data = wf_train)
+redtrain_summ = summary(redtrain_linmod)
 
-# R squared is 0.2683
+# reduced train mse
+mean(redtrain_summ$residuals^2)
 
-## see if there is a significant diff between full and reduced models
-anova(linmod, red_linmod)
+# reduced test mse
+red_preds = predict(redtrain_linmod, newdata = wf_test)
+mean((wf_test$fire_size - red_preds)^2)
+
+redtrain_summ$r.squared
+
